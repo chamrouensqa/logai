@@ -74,11 +74,25 @@ sudo apt install -y git python3-venv python3-pip nodejs npm nginx certbot python
 
 ```bash
 sudo mkdir -p /opt/logai
-sudo chown "$USER:$USER" /opt/logai
+sudo chown -R ubuntu:ubuntu /opt/logai
 cd /opt/logai
 # Option A
-git clone <YOUR_REPO_URL> .
-# Option B: rsync from local machine
+git --version
+ssh-keygen -t ed25519 -C "ec2-server"
+cat ~/.ssh/id_ed25519.pub
+cd path/to/your/project
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+git branch -M main
+git push -u origin main
+ssh -T git@github.com
+git clone git@github.com:chamrouensqa/logai.git .
+ls
+
+
+# Option B: rsync from local machine: 👉 GitHub → Settings → SSH and GPG keys → New SSH Key
 ```
 
 ---

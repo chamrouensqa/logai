@@ -958,6 +958,7 @@ The frontend can poll `GET /analysis/{job_id}` to track progress.
 
 Use one of the dedicated guides:
 
+- **Fastest Ubuntu path (copy/paste):** [docs/QUICKSTART_UBUNTU_DOCKER.md](docs/QUICKSTART_UBUNTU_DOCKER.md)
 - **Ubuntu server (VPS/on-prem):** [docs/DEPLOYMENT_UBUNTU.md](docs/DEPLOYMENT_UBUNTU.md)
 - **AWS (EC2 + RDS + optional ElastiCache):** [docs/DEPLOYMENT_AWS.md](docs/DEPLOYMENT_AWS.md)
 
@@ -969,7 +970,16 @@ Both guides include:
 
 ### Docker Compose (Recommended)
 
-The `docker/docker-compose.yml` defines the full stack:
+For Ubuntu local server, use `docker/docker-compose.ubuntu.yml` with `docker/.env.ubuntu`.
+
+```bash
+cp docker/.env.ubuntu.example docker/.env.ubuntu
+cp backend/.env.example backend/.env
+cd docker
+docker compose --env-file .env.ubuntu -f docker-compose.ubuntu.yml up -d --build
+```
+
+The `docker/docker-compose.yml` remains available for general development setups.
 
 | Service | Image | Port |
 |---------|-------|------|

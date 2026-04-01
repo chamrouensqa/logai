@@ -2,6 +2,8 @@
 
 This guide explains how to move the Log AI project from your local Mac to a **production Ubuntu server** (Ubuntu 22.04 LTS or 24.04 LTS recommended). It covers two approaches: **Docker Compose** (fastest to operate) and **native systemd + Nginx** (more control).
 
+For a shorter copy/paste setup, use `docs/QUICKSTART_UBUNTU_DOCKER.md`.
+
 ---
 
 ## Table of Contents

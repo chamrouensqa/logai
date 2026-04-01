@@ -1,0 +1,105 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: logai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-logai}
+      POSTGRES_USER: ${POSTGRES_USER:-logai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logai}
+    volumes:
+      - logai_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-logai} -d ${POSTGRES_DB:-logai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: logai-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - logai_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: logai-backend
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-logai}:${POSTGRES_PASSWORD:-logai}@postgres:5432/${POSTGRES_DB:-logai}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-logai}:${POSTGRES_PASSWORD:-logai}@postgres:5432/${POSTGRES_DB:-logai}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - logai_uploads:/app/uploads
+
+  celery-worker:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: logai-celery-worker
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-logai}:${POSTGRES_PASSWORD:-logai}@postgres:5432/${POSTGRES_DB:-logai}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-logai}:${POSTGRES_PASSWORD:-logai}@postgres:5432/${POSTGRES_DB:-logai}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - logai_uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: logai-frontend
+    restart: unless-stopped
+    environment:
+      # Browser uses /api (rewritten by Next server to backend service)
+      NEXT_PUBLIC_API_URL: http://backend:8000
+      # Browser uploads large files directly to backend host.
+      # Set SERVER_HOST_IP to your Ubuntu server LAN/public IP.
+      NEXT_PUBLIC_BACKEND_URL: http://${SERVER_HOST_IP:-127.0.0.1}:8000
+    command: npm run dev -- --hostname 0.0.0.0 --port 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  logai_pgdata:
+  logai_redisdata:
+  logai_uploads:
